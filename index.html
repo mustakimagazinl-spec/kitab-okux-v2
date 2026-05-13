@@ -233,8 +233,7 @@ function renderLanding(){
       <div style="margin-top:2rem;font-size:12px;color:#aaa;max-width:320px;line-height:1.7">بۇ ئەمگەكنى روياپقا چىقارغان قېرىندىشىڭىزنى سالىھ دۇئالىرىڭىزدا ئۇنۇتمىغايسىز 🤲</div>
       <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:0.5px solid #eee;width:100%;max-width:360px;text-align:center">
         <div style="font-size:12px;color:#aaa;margin-bottom:8px">كونا نەسخىدىن سانلىق مەلۇماتلارنى كۆچۈرمەكچىمۇ؟</div>
-        <button onclick="runMigrationFromLanding()" 
-          style="background:none;border:0.5px solid #ddd;border-radius:8px;padding:8px 18px;font-size:13px;color:#888;cursor:pointer">كونا سانلىق مەلۇماتلارنى كۆچۈرۈش</button>
+        <button id="migrate-landing-btn" style="background:none;border:0.5px solid #ddd;border-radius:8px;padding:8px 18px;font-size:13px;color:#888;cursor:pointer">كونا سانلىق مەلۇماتلارنى كۆچۈرۈش</button>
         <div id="landing-migrate-result" style="margin-top:10px"></div>
       </div>
     </div>`);
@@ -1081,6 +1080,56 @@ window.migrateOldData = async function() {
   }
 };
 
+
+async function runMigrationFromLanding() {
+  if(!confirm('كونا سانلىق مەلۇماتلارنى okush2026 گۇرۇپپىسىغا كۆچۈرەمسىز؟')) return;
+  var btn = document.getElementById('migrate-landing-btn');
+  var resEl = document.getElementById('landing-migrate-result');
+  if(btn){ btn.textContent='كۆچۈرۈلۈۋاتىدۇ...'; btn.disabled=true; }
+  try {
+    var results = await Promise.all([
+      getDoc(doc(db,'app','persons')),
+      getDoc(doc(db,'app','entries')),
+      getDoc(doc(db,'app','cycles')),
+      getDoc(doc(db,'app','activeCycle'))
+    ]);
+    var oldPersons = results[0].exists() ? (results[0].data().list || []) : [];
+    var oldEntries = results[1].exists() ? (results[1].data().list || []) : [];
+    var oldCycles  = results[2].exists() ? (results[2].data().list || []) : [];
+    var oldCycle   = results[3].exists() ? (results[3].data().value || null) : null;
+
+    var groupCode = 'okush2026';
+    await setDoc(doc(db,'groups',groupCode), {
+      name: 'ئۇيغۇر بىر قەلىب باغچىسى كىتاب ئوقۇش گۇرۇپپىسى',
+      pin: '1234',
+      createdAt: today()
+    });
+    await setDoc(doc(db,'groups',groupCode,'data','persons'),     {list: oldPersons});
+    await setDoc(doc(db,'groups',groupCode,'data','entries'),     {list: oldEntries});
+    await setDoc(doc(db,'groups',groupCode,'data','cycles'),      {list: oldCycles});
+    await setDoc(doc(db,'groups',groupCode,'data','activeCycle'), {value: oldCycle});
+
+    GROUP_ID = groupCode;
+    window.location.hash = groupCode;
+    STATE.persons = oldPersons;
+    STATE.entries = oldEntries;
+    STATE.cycles  = oldCycles;
+    STATE.activeCycle = oldCycle;
+
+    if(resEl) {
+      resEl.style.cssText = 'background:#EAF3DE;border-radius:10px;padding:10px 14px;color:#27500A;font-size:13px;margin-top:8px';
+      resEl.textContent = oldPersons.length + ' ئەزا، ' + oldEntries.length + ' خاتىرە كۆچۈرۈلدى! ئەپ ئېچىلىۋاتىدۇ...';
+    }
+    setTimeout(function(){ renderHome(); }, 1500);
+  } catch(err) {
+    if(resEl) {
+      resEl.style.cssText = 'background:#FCEBEB;border-radius:10px;padding:10px 14px;color:#A32D2D;font-size:13px;margin-top:8px';
+      resEl.textContent = 'خاتالىق: ' + err.message;
+    }
+    if(btn){ btn.textContent='كونا سانلىق مەلۇماتلارنى كۆچۈرۈش'; btn.disabled=false; }
+  }
+}
+
 // Expose UI functions to global scope for onclick handlers
 window.showView = showView;
 window.renderLanding = renderLanding;
@@ -1098,48 +1147,6 @@ window.clearAllData = clearAllData;
 window.exportExcel = exportExcel;
 window.migrateOldData = migrateOldData;
 
-window.runMigrationFromLanding = async function() {
-  if(!confirm('كونا سانلىق مەلۇماتلارنى okush2026 گۇرۇپپىسىغا كۆچۈرەمسىز؟')) return;
-  const btn = document.querySelector('[onclick="runMigrationFromLanding()"]');
-  if(btn){btn.textContent='كۆچۈرۈلۈۋاتىدۇ...';btn.disabled=true;}
-  const resEl = document.getElementById('landing-migrate-result');
-  try {
-    const [pS,eS,cS,aS] = await Promise.all([
-      getDoc(doc(db,'app','persons')),
-      getDoc(doc(db,'app','entries')),
-      getDoc(doc(db,'app','cycles')),
-      getDoc(doc(db,'app','activeCycle')),
-    ]);
-    const oldPersons = pS.exists() ? pS.data().list || [] : [];
-    const oldEntries = eS.exists() ? eS.data().list || [] : [];
-    const oldCycles  = cS.exists() ? cS.data().list || [] : [];
-    const oldCycle   = aS.exists() ? aS.data().value || null : null;
-
-    const groupCode = 'okush2026';
-    await setDoc(doc(db,'groups',groupCode),{
-      name:'ئۇيغۇر بىر قەلىب باغچىسى كىتاب ئوقۇش گۇرۇپپىسى',
-      pin:'1234',
-      createdAt: new Date().toISOString().slice(0,10)
-    });
-    await setDoc(doc(db,'groups',groupCode,'data','persons'),     {list: oldPersons});
-    await setDoc(doc(db,'groups',groupCode,'data','entries'),     {list: oldEntries});
-    await setDoc(doc(db,'groups',groupCode,'data','cycles'),      {list: oldCycles});
-    await setDoc(doc(db,'groups',groupCode,'data','activeCycle'), {value: oldCycle});
-
-    GROUP_ID = groupCode;
-    window.location.hash = groupCode;
-    STATE.persons = oldPersons;
-    STATE.entries = oldEntries;
-    STATE.cycles  = oldCycles;
-    STATE.activeCycle = oldCycle;
-
-    if(resEl) resEl.innerHTML = '<div style="background:#EAF3DE;border-radius:10px;padding:10px 14px;color:#27500A;font-size:13px">✅ ' + oldPersons.length + ' ئەزا، ' + oldEntries.length + ' خاتىرە كۆچۈرۈلدى! ئەپ ئېچىلىۋاتىدۇ...</div>';
-    setTimeout(()=>renderHome(), 1500);
-  } catch(err) {
-    if(resEl) resEl.innerHTML = '<div style="background:#FCEBEB;border-radius:10px;padding:10px 14px;color:#A32D2D;font-size:13px">خاتالىق: ' + err.message + '</div>';
-    if(btn){btn.textContent='كونا سانلىق مەلۇماتلارنى كۆچۈرۈش';btn.disabled=false;}
-  }
-};
 
 window.adminAddPerson = adminAddPerson;
 window.removePerson = removePerson;
@@ -1155,6 +1162,13 @@ window.submitReading = submitReading;
 window.openParticipant = openParticipant;
 
 init();
+
+// Wire up landing migration button safely
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('migrate-landing-btn');
+  if(btn) btn.addEventListener('click', runMigrationFromLanding);
+});
+
 window.renderHome=renderHome;
 window.renderAdmin=renderAdmin;
 window.renderAdminTab=renderAdminTab;
