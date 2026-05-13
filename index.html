@@ -41,8 +41,10 @@ input,select,button{font-family:inherit}
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
+
+console.log("Firebase imports loaded successfully");
 
 const firebaseConfig = {
   apiKey: "AIzaSyAbcYUdNHOiCvdu3b1xVNUPC14K7YSbT4c",
@@ -1043,7 +1045,9 @@ function renderTabSettings(el){
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 async function init(){
+  console.log("init() called");
   try {
+    console.log("trying Firebase...");
     const hash=window.location.hash.replace('#','').trim().toLowerCase();
     if(hash){
       const snap=await getDoc(doc(db,'groups',hash));
