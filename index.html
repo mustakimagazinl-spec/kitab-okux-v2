@@ -227,7 +227,7 @@ function renderLanding(){
         </div>
         <div style="border-top:0.5px solid #eee;padding-top:1.5rem">
           <div style="font-size:14px;font-weight:500;margin-bottom:10px">يېڭى گۇرۇپپا قۇرۇش</div>
-          <button onclick="showView('view-create')" style="width:100%;background:#E1F5EE;color:#085041;border:1.5px solid #5DCAA5;border-radius:10px;padding:11px;font-size:15px;cursor:pointer;font-weight:500">+ يېڭى گۇرۇپپا قۇرۇش</button>
+          <button onclick="renderCreate()" style="width:100%;background:#E1F5EE;color:#085041;border:1.5px solid #5DCAA5;border-radius:10px;padding:11px;font-size:15px;cursor:pointer;font-weight:500">+ يېڭى گۇرۇپپا قۇرۇش</button>
         </div>
       </div>
       <div style="margin-top:2rem;font-size:12px;color:#aaa;max-width:320px;line-height:1.7">بۇ ئەمگەكنى روياپقا چىقارغان قېرىندىشىڭىزنى سالىھ دۇئالىرىڭىزدا ئۇنۇتمىغايسىز 🤲</div>
@@ -993,6 +993,35 @@ async function init(){
   }
   renderLanding();
 }
+
+// Expose UI functions to global scope for onclick handlers
+window.showView = showView;
+window.renderLanding = renderLanding;
+window.renderCreate = renderCreate;
+window.joinGroup = joinGroup;
+window.createGroup = createGroup;
+window.openAdminPin = openAdminPin;
+window.pinTap = pinTap;
+window.renderAdmin = renderAdmin;
+window.renderAdminTab = renderAdminTab;
+window.startCycle = startCycle;
+window.endCycle = endCycle;
+window.changePin = changePin;
+window.clearAllData = clearAllData;
+window.exportExcel = exportExcel;
+window.adminAddPerson = adminAddPerson;
+window.removePerson = removePerson;
+window.admDeleteEntry = admDeleteEntry;
+window.admEditEntry = admEditEntry;
+window.admSaveEntry = admSaveEntry;
+window.ppAddBook = ppAddBook;
+window.ppSaveIntention = ppSaveIntention;
+window.ppEditRow = ppEditRow;
+window.ppSaveRow = ppSaveRow;
+window.ppDeleteEntry = ppDeleteEntry;
+window.submitReading = submitReading;
+window.openParticipant = openParticipant;
+
 init();
 window.renderHome=renderHome;
 window.renderAdmin=renderAdmin;
