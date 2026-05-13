@@ -630,8 +630,8 @@ window.pinTap=async function(k){
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 function renderAdmin(tab){
-  const tabs=['members','cycle','entries','summary','leaderboard','archive','export','settings'];
-  const labels=['ئەزالار','چەمبەر','خاتىرىلەر','خۇلاسە','رەتلىك','ئارخىپ','چىقىرىش','تەڭشەك'];
+  const tabs=['members','cycle','entries','summary','leaderboard','archive','export','settings','migrate'];
+  const labels=['ئەزالار','چەمبەر','خاتىرىلەر','خۇلاسە','رەتلىك','ئارخىپ','چىقىرىش','تەڭشەك','كۆچۈرۈش'];
   let html=`<div style="background:linear-gradient(135deg,#534AB7,#3C3489);padding:1rem;color:#fff;display:flex;align-items:center;justify-content:space-between">
     <div style="font-size:16px;font-weight:600">باشقۇرغۇچى تاختىسى</div>
     <button onclick="renderHome();showView('view-home');" style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer">&#8592; باش بەت</button>
@@ -655,6 +655,7 @@ function renderAdminTab(tab){
   else if(tab==='archive')el.innerHTML=tabArchive();
   else if(tab==='export')el.innerHTML=tabExport();
   else if(tab==='settings')el.innerHTML=tabSettings();
+  else if(tab==='migrate')el.innerHTML=tabMigrate();
 }
 
 function tabMembers(){
@@ -994,6 +995,86 @@ async function init(){
   renderLanding();
 }
 
+
+function tabMigrate(){
+  return`<div style="background:#fff;border:0.5px solid #eee;border-radius:14px;padding:1.5rem">
+    <div style="font-size:16px;font-weight:600;color:#534AB7;margin-bottom:8px">كونا سانلىق مەلۇماتلارنى كۆچۈرۈش</div>
+    <div style="font-size:13px;color:#555;line-height:1.8;margin-bottom:1rem">
+      بۇ كۇنۇپكا كونا نەسخىدىكى (kitab-okux) بارلىق ئەزالار، خاتىرىلەر ۋە چەمبەرلەرنى يېڭى گۇرۇپپىڭىزغا ئاپتوماتىك كۆچۈرىدۇ.<br><br>
+      گۇرۇپپا كودى: <strong style="direction:ltr;display:inline-block">okush2026</strong><br>
+      گۇرۇپپا ئىسمى: <strong>ئۇيغۇر بىر قەلىب باغچىسى كىتاب ئوقۇش گۇرۇپپىسى</strong><br>
+      PIN: <strong>1234</strong>
+    </div>
+    <button id="migrate-btn" onclick="migrateOldData()"
+      style="background:#534AB7;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:15px;cursor:pointer;font-weight:500">كونا سانلىق مەلۇماتلارنى كۆچۈرۈش</button>
+    <div id="migrate-result"></div>
+  </div>`;
+}
+
+
+// ── MIGRATION ─────────────────────────────────────────────────────────────────
+window.migrateOldData = async function() {
+  if(!confirm('كونا سانلىق مەلۇماتلارنى يېڭى گۇرۇپپىغا كۆچۈرەمسىز؟'))return;
+  const btn = document.getElementById('migrate-btn');
+  if(btn){btn.textContent='كۆچۈرۈلۈۋاتىدۇ...';btn.disabled=true;}
+  try {
+    // Read old data from /app/
+    const [pS,eS,cS,aS] = await Promise.all([
+      getDoc(doc(db,'app','persons')),
+      getDoc(doc(db,'app','entries')),
+      getDoc(doc(db,'app','cycles')),
+      getDoc(doc(db,'app','activeCycle')),
+    ]);
+    const oldPersons = pS.exists() ? pS.data().list || [] : [];
+    const oldEntries = eS.exists() ? eS.data().list || [] : [];
+    const oldCycles  = cS.exists() ? cS.data().list || [] : [];
+    const oldCycle   = aS.exists() ? aS.data().value || null : null;
+
+    // Create group record if not exists
+    const groupCode = 'okush2026';
+    const groupSnap = await getDoc(doc(db,'groups',groupCode));
+    if(!groupSnap.exists()){
+      await setDoc(doc(db,'groups',groupCode),{
+        name:'ئۇيغۇر بىر قەلىب باغچىسى كىتاب ئوقۇش گۇرۇپپىسى',
+        pin:'1234',
+        createdAt: new Date().toISOString().slice(0,10)
+      });
+    }
+
+    // Write old data into new group path
+    await setDoc(doc(db,'groups',groupCode,'data','persons'),     {list: oldPersons});
+    await setDoc(doc(db,'groups',groupCode,'data','entries'),     {list: oldEntries});
+    await setDoc(doc(db,'groups',groupCode,'data','cycles'),      {list: oldCycles});
+    await setDoc(doc(db,'groups',groupCode,'data','activeCycle'), {value: oldCycle});
+
+    // Switch into the group
+    GROUP_ID = groupCode;
+    window.location.hash = groupCode;
+    STATE.persons = oldPersons;
+    STATE.entries = oldEntries;
+    STATE.cycles  = oldCycles;
+    STATE.activeCycle = oldCycle;
+
+    const el = document.getElementById('migrate-result');
+    if(el){
+      el.innerHTML = \`<div style="background:#EAF3DE;border-radius:12px;padding:1.25rem;text-align:center;margin-top:1rem">
+        <div style="font-size:20px;margin-bottom:6px">✅</div>
+        <div style="font-weight:600;color:#085041;margin-bottom:6px">مۇۋەپپەقىيەتلىك كۆچۈرۈلدى!</div>
+        <div style="font-size:13px;color:#27500A;margin-bottom:12px">\${oldPersons.length} ئەزا، \${oldEntries.length} خاتىرە كۆچۈرۈلدى.</div>
+        <div style="font-size:12px;color:#555;margin-bottom:12px;background:#fff;border-radius:8px;padding:10px;direction:ltr">
+          گۇرۇپپا ئۇلانمىسى:<br><strong>https://mustakimagazinl-spec.github.io/kitab-okux-v2/#okush2026</strong>
+        </div>
+        <button onclick="renderHome();showView('view-home');" 
+          style="background:#0F6E56;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:14px;cursor:pointer;font-weight:500">ئەپنى ئاچىش</button>
+      </div>\`;
+    }
+  } catch(err) {
+    const el = document.getElementById('migrate-result');
+    if(el)el.innerHTML = \`<div style="background:#FCEBEB;border-radius:10px;padding:12px;color:#A32D2D;font-size:13px;margin-top:1rem">خاتالىق: \${err.message}</div>\`;
+    if(btn){btn.textContent='قايتا سىناڭ';btn.disabled=false;}
+  }
+};
+
 // Expose UI functions to global scope for onclick handlers
 window.showView = showView;
 window.renderLanding = renderLanding;
@@ -1009,6 +1090,7 @@ window.endCycle = endCycle;
 window.changePin = changePin;
 window.clearAllData = clearAllData;
 window.exportExcel = exportExcel;
+window.migrateOldData = migrateOldData;
 window.adminAddPerson = adminAddPerson;
 window.removePerson = removePerson;
 window.admDeleteEntry = admDeleteEntry;
